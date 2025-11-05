@@ -1,0 +1,161 @@
+﻿@page "/"
+@inject IJSRuntime JS
+@implements IDisposable
+
+<h3 class="mb-3">Adafruit IO – Live Dashboard</h3>
+
+<div class="card p-3 mb-3">
+  <details open>
+    <summary class="fw-bold">Settings</summary>
+    <div class="row g-3 mt-2">
+      <div class="col-md-3">
+        <label class="form-label">Username</label>
+        <input class="form-control" @bind-value="cfg.Username" />
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">AIO Key</label>
+        <input class="form-control" @bind-value="cfg.Key" type="password" />
+      </div>
+      <div class="col-md-4 d-flex align-items-end gap-2">
+        <button class="btn btn-primary" @onclick="Connect">Connect</button>
+        <button class="btn btn-outline-secondary" @onclick="SaveCfg">Save</button>
+        <span class="align-self-center">Status: <b>@status</b></span>
+      </div>
+    </div>
+    <div class="row g-3 mt-2">
+      <div class="col-md-4">
+        <label class="form-label">Feed Temp</label>
+        <input class="form-control" @bind-value="cfg.FeedTemp" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Feed Lux</label>
+        <input class="form-control" @bind-value="cfg.FeedLux" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Feed Relay</label>
+        <input class="form-control" @bind-value="cfg.FeedRelay" />
+      </div>
+    </div>
+    <div class="form-text mt-1">⚠️ Plan A: Key nằm ở client. Dùng key read-only nếu chỉ xem.</div>
+  </details>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="small text-muted">Temperature</div>
+      <div class="display-6">@(_temp is null ? "--" : $"{_temp} °C")</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="small text-muted">Lux</div>
+      <div class="display-6">@(_lux is null ? "--" : $"{_lux} lx")</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="small text-muted">Relay</div>
+      <div>
+        <button class="btn btn-success me-2" @onclick="() => PublishRelay(true)"  disabled="@( !connected )">ON</button>
+        <button class="btn btn-outline-secondary" @onclick="() => PublishRelay(false)" disabled="@( !connected )">OFF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card p-3 mb-3">
+  <div class="small text-muted mb-2">Recent messages</div>
+  <div style="max-height:220px; overflow:auto">
+    @foreach (var item in _log)
+    {
+      <div class="small"><code>@item.ts.ToString("HH:mm:ss")</code> — <b>@item.topic</b>: @item.payload</div>
+    }
+  </div>
+</div>
+
+@code {
+  // Dùng class mutable thay vì record init-only
+  public class Cfg
+  {
+    public string? Username { get; set; }
+    public string? Key { get; set; }
+    public string FeedTemp { get; set; } = "YOUR_USERNAME/feeds/temp";
+    public string FeedLux  { get; set; } = "YOUR_USERNAME/feeds/lux";
+    public string FeedRelay{ get; set; } = "YOUR_USERNAME/feeds/relay";
+  }
+
+  Cfg cfg = new();
+
+  string status = "idle";
+  bool connected;
+  string? _temp; string? _lux;
+
+  List<(DateTime ts, string topic, string payload)> _log = new();
+
+  DotNetObjectReference<Index>? _selfRef;
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (!firstRender) return;
+
+    // Load cfg from localStorage (nếu có)
+    var saved = await JS.InvokeAsync<Cfg?>("store.get", "aioCfg", null);
+    if (saved is not null) cfg = saved;
+
+    _selfRef = DotNetObjectReference.Create(this);
+    await JS.InvokeVoidAsync("aioMqtt.init", _selfRef);
+  }
+
+  async Task SaveCfg()
+  {
+    await JS.InvokeVoidAsync("store.set", "aioCfg", cfg);
+  }
+
+  async Task Connect()
+  {
+    if (string.IsNullOrWhiteSpace(cfg.Username) || string.IsNullOrWhiteSpace(cfg.Key))
+    { status = "missing username/key"; StateHasChanged(); return; }
+
+    await JS.InvokeVoidAsync("aioMqtt.connect", new {
+      username = cfg.Username,
+      key = cfg.Key,
+      clientId = $"blazor-{Guid.NewGuid()}"
+    });
+
+    await JS.InvokeVoidAsync("aioMqtt.subscribe", cfg.FeedTemp);
+    await JS.InvokeVoidAsync("aioMqtt.subscribe", cfg.FeedLux);
+    connected = true;
+  }
+
+  // 👇 Bổ sung hàm publish điều khiển
+  private async Task PublishRelay(bool on)
+  {
+    await JS.InvokeVoidAsync("aioMqtt.publish", cfg.FeedRelay, on ? "ON" : "OFF");
+  }
+
+  [JSInvokable]
+  public Task OnMqttStatus(bool isConnected, string message)
+  {
+    connected = isConnected;
+    status = isConnected ? $"Online ({message})" : $"Offline ({message})";
+    StateHasChanged();
+    return Task.CompletedTask;
+  }
+
+  [JSInvokable]
+  public Task OnMqttMessage(string topic, string payload)
+  {
+    if (topic == cfg.FeedTemp) _temp = payload;
+    else if (topic == cfg.FeedLux) _lux = payload;
+
+    _log.Insert(0, (DateTime.Now, topic, payload));
+    if (_log.Count > 200) _log.RemoveRange(200, _log.Count - 200);
+
+    StateHasChanged();
+    return Task.CompletedTask;
+  }
+
+  public void Dispose() => _selfRef?.Dispose();
+}
+
