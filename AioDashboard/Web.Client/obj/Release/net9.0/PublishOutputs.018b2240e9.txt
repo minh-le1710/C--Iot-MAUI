@@ -1,0 +1,1 @@
+C:\Users\minhkind1710\Desktop\C# Iot MAUI\AioDashboard\Web.Client\build\web.config
