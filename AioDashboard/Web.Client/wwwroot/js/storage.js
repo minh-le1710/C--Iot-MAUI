@@ -3,4 +3,3 @@ window.store = {
   get: (k,def) => { try{ const v = localStorage.getItem(k); return v? JSON.parse(v): def; } catch { return def; }},
   remove: (k) => localStorage.removeItem(k)
 };
-window.isAioReady = () => !!window.aioMqtt;
