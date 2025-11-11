@@ -112,3 +112,16 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+.weather-wrap { max-width: 1200px; }
+.weather-current { border-radius: 16px; box-shadow: 0 6px 16px rgba(0,0,0,.06); }
+.weather-day { border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.05); }
+@media (max-width: 576px){
+  .weather-current .display-5 { font-size: 2.2rem; }
+}
+
+.weather-header .time {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .3px;
+}
+

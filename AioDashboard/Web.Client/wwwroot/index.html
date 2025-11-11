@@ -10,7 +10,29 @@
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="Web.Client.styles.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 </head>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  window.weatherMap = {
+    _map: null, _marker: null,
+    init: function (id, lat, lon) {
+      if (this._map) { this.update(lat, lon); return; }
+      this._map = L.map(id).setView([lat, lon], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap'
+      }).addTo(this._map);
+      this._marker = L.marker([lat, lon]).addTo(this._map);
+    },
+    update: function (lat, lon) {
+      if (!this._map) return;
+      this._map.setView([lat, lon], 12);
+      if (this._marker) this._marker.setLatLng([lat, lon]);
+    }
+  };
+</script>
 
 
 <body>
@@ -27,6 +49,17 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+    <!-- Leaflet CSS/JS (bản đồ) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- JS interop hiện có của bạn -->
+<script src="js/aio-mqtt.js"></script>
+<script src="js/storage.js"></script>
+
+<!-- Map helper -->
+ <script src="js/geo.js"></script>
+<script src="js/map.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="js/iot-charts.js"></script>
     <script src="https://unpkg.com/paho-mqtt/mqttws31.min.js"></script>
