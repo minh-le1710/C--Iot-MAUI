@@ -1,0 +1,198 @@
+﻿@page "/"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@implements IDisposable
+
+<h3 class="mb-3">Adafruit IO – REST Dashboard</h3>
+
+<div class="card p-3 mb-3">
+  <details open>
+    <summary class="fw-bold">Settings</summary>
+    <div class="row g-3 mt-2">
+      <div class="col-md-6">
+        <label class="form-label">API URL (Feed)</label>
+        <input class="form-control" @bind-value="cfg.ApiUrl" />
+        <div class="form-text">
+          Ví dụ: https://io.adafruit.com/api/v2/nhatminh1710/feeds/json-payload
+          @* <br />(Web sẽ đọc trường <code>last_value</code> của feed và parse JSON) *@
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">AIO Key (Tùy chọn)</label>
+        <input class="form-control" @bind-value="cfg.AioKey" type="password" />
+        <div class="form-text">Feed public có thể GET không cần key</div>
+      </div>
+      <div class="col-md-3 d-flex align-items-end gap-2">
+        <button class="btn btn-primary" @onclick="StartPolling" disabled="@( isPolling )">Start</button>
+        <button class="btn btn-outline-secondary" @onclick="StopPolling" disabled="@( !isPolling )">Stop</button>
+        <span class="align-self-center">Status: <b>@status</b></span>
+      </div>
+    </div>
+    <div class="row g-3 mt-2">
+      <div class="col-md-3">
+        <label class="form-label">Interval (ms)</label>
+        <input class="form-control" type="number" @bind-value="cfg.IntervalMs" />
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-outline-success me-2" @onclick="SaveCfg">Save</button>
+        <button class="btn btn-outline-danger" @onclick="ClearCfg">Clear</button>
+      </div>
+    </div>
+  </details>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="small text-muted">Temperature</div>
+      <div class="display-6">@(_t.HasValue ? $"{_t:F1} °C" : "--")</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="small text-muted">Humidity</div>
+      <div class="display-6">@(_h.HasValue ? $"{_h:F1} %" : "--")</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="small text-muted">Lux</div>
+      <div class="display-6">@(_lx.HasValue ? $"{_lx:F0} lx" : "--")</div>
+    </div>
+  </div>
+</div>
+
+<div class="card p-3" style="height: 340px;">
+  <div class="small text-muted mb-2">Realtime history (last 60 points)</div>
+  <canvas id="chart1" style="height: 280px;"></canvas>
+</div>
+
+@code {
+  public class Cfg
+  {
+    public string ApiUrl { get; set; } = "https://io.adafruit.com/api/v2/nhatminh1710/feeds/json-payload";
+    public string? AioKey { get; set; }
+    public int IntervalMs { get; set; } = 2000;
+  }
+
+  Cfg cfg = new();
+  bool isPolling = false;
+  string status = "idle";
+  double? _t, _h, _lx;
+  CancellationTokenSource? _cts;
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (!firstRender) return;
+
+    // Load config
+    var saved = await JS.InvokeAsync<Cfg?>("store.get", "restCfg", null);
+    if (saved is not null) cfg = saved;
+
+    // Khởi tạo Chart
+    await JS.InvokeVoidAsync("iotCharts.makeChart", "chart1");
+
+    
+  }
+
+  async Task SaveCfg()
+  {
+    await JS.InvokeVoidAsync("store.set", "restCfg", cfg);
+    status = "saved";
+  }
+
+  async Task ClearCfg()
+  {
+    await JS.InvokeVoidAsync("store.remove", "restCfg");
+    status = "cleared";
+  }
+
+  async Task StartPolling()
+  {
+    if (isPolling) return;
+    if (string.IsNullOrWhiteSpace(cfg.ApiUrl))
+    {
+      status = "missing ApiUrl";
+      return;
+    }
+
+    isPolling = true;
+    status = "polling...";
+    _cts = new CancellationTokenSource();
+
+    _ = Task.Run(async () =>
+    {
+      while (!_cts!.IsCancellationRequested)
+      {
+        try
+        {
+          using var req = new HttpRequestMessage(HttpMethod.Get, cfg.ApiUrl);
+          if (!string.IsNullOrWhiteSpace(cfg.AioKey))
+            req.Headers.Add("X-AIO-Key", cfg.AioKey);
+
+          using var res = await Http.SendAsync(req, _cts.Token);
+          res.EnsureSuccessStatusCode();
+
+          // Response là feed object có field "last_value" (string JSON)
+          var json = await res.Content.ReadFromJsonAsync<FeedResponse>(_cts.Token);
+          if (json?.last_value is not null)
+          {
+            // last_value có thể là {"temp":..,"hum":..,"lux":..} hoặc {"t":..,"h":..,"lx":..}
+            var m = System.Text.Json.JsonDocument.Parse(json.last_value).RootElement;
+            double? t = TryGet(m, "temp") ?? TryGet(m, "t");
+            double? h = TryGet(m, "hum")  ?? TryGet(m, "h");
+            double? lx= TryGet(m, "lux")  ?? TryGet(m, "lx");
+
+            _t = t; _h = h; _lx = lx;
+
+            // đẩy điểm vào chart
+            var label = DateTime.Now.ToString("HH:mm:ss");
+            await JS.InvokeVoidAsync("iotCharts.addPoint", "chart1", label, _t ?? 0, _h ?? 0, _lx ?? 0);
+
+            await InvokeAsync(StateHasChanged);
+          }
+          else
+          {
+            status = "no last_value";
+            await InvokeAsync(StateHasChanged);
+          }
+        }
+        catch (Exception ex)
+        {
+          status = "error: " + ex.Message;
+          await InvokeAsync(StateHasChanged);
+        }
+
+        try { await Task.Delay(cfg.IntervalMs, _cts.Token); } catch { }
+      }
+    });
+  }
+
+  void StopPolling()
+  {
+    if (!isPolling) return;
+    _cts?.Cancel();
+    isPolling = false;
+    status = "stopped";
+  }
+
+  static double? TryGet(System.Text.Json.JsonElement root, string name)
+  {
+    if (root.TryGetProperty(name, out var v))
+    {
+      if (v.ValueKind == System.Text.Json.JsonValueKind.Number && v.TryGetDouble(out var d)) return d;
+      if (v.ValueKind == System.Text.Json.JsonValueKind.String && double.TryParse(v.GetString(), out var ds)) return ds;
+    }
+    return null;
+  }
+
+  public void Dispose() => _cts?.Cancel();
+
+  public class FeedResponse
+  {
+    public string? last_value { get; set; }
+  }
+}
+
+
+

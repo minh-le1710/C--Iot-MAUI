@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "Ij0N/d7MW6g=",
+  "dgSpecHash": "ir1hiawznjM=",
   "success": true,
   "projectFilePath": "C:\\Users\\minhkind1710\\Desktop\\C# Iot MAUI\\AioDashboard\\Web.Client\\Web.Client.csproj",
   "expectedPackageFiles": [
@@ -29,8 +29,9 @@
     "C:\\Users\\minhkind1710\\.nuget\\packages\\microsoft.jsinterop\\9.0.10\\microsoft.jsinterop.9.0.10.nupkg.sha512",
     "C:\\Users\\minhkind1710\\.nuget\\packages\\microsoft.jsinterop.webassembly\\9.0.10\\microsoft.jsinterop.webassembly.9.0.10.nupkg.sha512",
     "C:\\Users\\minhkind1710\\.nuget\\packages\\microsoft.net.illink.tasks\\9.0.10\\microsoft.net.illink.tasks.9.0.10.nupkg.sha512",
-    "C:\\Users\\minhkind1710\\.nuget\\packages\\microsoft.net.sdk.webassembly.pack\\9.0.10\\microsoft.net.sdk.webassembly.pack.9.0.10.nupkg.sha512",
-    "C:\\Users\\minhkind1710\\.nuget\\packages\\microsoft.netcore.app.runtime.mono.browser-wasm\\9.0.10\\microsoft.netcore.app.runtime.mono.browser-wasm.9.0.10.nupkg.sha512"
+    "C:\\Users\\minhkind1710\\.nuget\\packages\\microsoft.net.sdk.webassembly.pack\\9.0.11\\microsoft.net.sdk.webassembly.pack.9.0.11.nupkg.sha512",
+    "C:\\Users\\minhkind1710\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.11\\microsoft.netcore.app.ref.9.0.11.nupkg.sha512",
+    "C:\\Users\\minhkind1710\\.nuget\\packages\\microsoft.netcore.app.runtime.mono.browser-wasm\\9.0.11\\microsoft.netcore.app.runtime.mono.browser-wasm.9.0.11.nupkg.sha512"
   ],
   "logs": []
 }

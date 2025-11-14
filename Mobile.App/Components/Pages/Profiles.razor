@@ -1,0 +1,78 @@
+@page "/profiles"
+@inject NavigationManager Nav
+
+<h3 class="mb-3">Hồ sơ</h3>
+
+<div class="profile-wrap">
+  <div class="card p-4 max-w">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Họ</label>
+        <input class="form-control" @bind="LastName" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Tên</label>
+        <input class="form-control" @bind="FirstName" />
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Giới tính</label>
+        <select class="form-select" @bind="Gender">
+          <option>Nam</option>
+          <option>Nữ</option>
+          <option>Khác</option>
+        </select>
+      </div>
+
+      <div class="col-md-8">
+        <label class="form-label">Tỉnh/Thành</label>
+        <input class="form-control" @bind="Province" />
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Giới thiệu</label>
+        <textarea class="form-control" rows="3" @bind="About"></textarea>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+      <button class="btn btn-primary" @onclick="Save">Save</button>
+      <button class="btn btn-outline-danger" @onclick="Logout">Đăng xuất</button>
+    </div>
+
+    @if (Saved)
+    {
+      <div class="alert alert-success mt-3 py-2">Đã lưu.</div>
+    }
+    @if (LoggedOut)
+    {
+      <div class="alert alert-warning mt-3 py-2">Đã đăng xuất. Chuyển về trang chủ…</div>
+    }
+  </div>
+</div>
+
+@code {
+  // Giá trị mặc định theo yêu cầu
+  string LastName  = "Minh";
+  string FirstName = "Lê";
+  string Gender    = "Nam";
+  string Province  = "TP. Hồ Chí Minh";
+  string About     = "IoT is the best";
+
+  bool Saved, LoggedOut;
+
+  void Save()
+  {
+    // Không lưu thật — chỉ báo trạng thái
+    Saved = true;
+    LoggedOut = false;
+  }
+
+  async Task Logout()
+  {
+    LoggedOut = true;
+    Saved = false;
+    await Task.Delay(900);
+    Nav.NavigateTo("/");
+  }
+}

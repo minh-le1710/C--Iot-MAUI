@@ -1,0 +1,156 @@
+@page "/weather"
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<h3 class="mb-3">Thời tiết</h3>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger">Lỗi tải dữ liệu: @error</div>
+}
+else if (loading)
+{
+    <div>Đang tải...</div>
+}
+else if (current is not null)
+{
+    <div class="card p-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <img src="@IconUrl(CurrentIcon)" alt="icon" style="width:72px;height:72px" />
+            <div>
+                <div class="h4 mb-1">@current.name, VN</div>
+                <div class="fs-5">
+                    <b>@Math.Round(current.main.temp)</b> °C —
+                    @Cap(current.weather.FirstOrDefault()?.description ?? "—")
+                </div>
+                <div class="text-muted small">
+                    Độ ẩm: @current.main.humidity% · Gió: @Math.Round(current.wind?.speed ?? 0, 1) m/s ·
+                    Last update: @localNow.ToString("HH:mm:ss dd/MM/yyyy")
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (daily.Any())
+    {
+        <div class="mb-2 fw-semibold">Dự báo thời tiết 5 ngày tới</div>
+        <div class="row g-3">
+            @foreach (var d in daily)
+            {
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="card p-3 text-center">
+                        <div class="small text-muted">@d.dt.ToString("ddd, dd/MM")</div>
+                        <img src="@IconUrl(d.icon)" alt="icon" style="width:48px;height:48px;margin:auto" />
+                        <div class="mt-1">@Math.Round(d.temp) °C</div>
+                        <div class="small text-muted">@Cap(d.desc)</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    // --- CẤU HÌNH ---
+    const string ApiKey = "0c9200bef9bcccf47c9a7969608a7f42"; // bạn đưa
+    const string City    = "Ho Chi Minh City";
+    const string Units   = "metric";
+    const string Lang    = "vi";
+
+    bool loading = true;
+    string? error;
+
+    DateTime localNow = DateTime.Now;
+
+    CurrentWeatherResponse? current;
+    ForecastResponse? forecast;
+
+    // danh sách dự báo rút gọn theo ngày (tối đa 5 ngày)
+    List<DailyPick> daily = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // CURRENT
+            var urlNow =
+                $"https://api.openweathermap.org/data/2.5/weather?q={Uri.EscapeDataString(City)}&appid={ApiKey}&units={Units}&lang={Lang}";
+            current = await Http.GetFromJsonAsync<CurrentWeatherResponse>(urlNow);
+
+            // 5-DAY / 3-HOUR FORECAST
+            var urlFc =
+                $"https://api.openweathermap.org/data/2.5/forecast?q={Uri.EscapeDataString(City)}&appid={ApiKey}&units={Units}&lang={Lang}";
+            forecast = await Http.GetFromJsonAsync<ForecastResponse>(urlFc);
+
+            // Lấy mỗi ngày 1 bản ghi (gần 12:00)
+            if (forecast?.list is not null)
+            {
+                var byDay = forecast.list
+                    .Select(x => new
+                    {
+                        item = x,
+                        dtLocal = DateTimeOffset.FromUnixTimeSeconds(x.dt).LocalDateTime
+                    })
+                    .GroupBy(x => x.dtLocal.Date)
+                    .OrderBy(g => g.Key)
+                    .Take(6); // đề phòng lấy dư, lát sẽ lọc còn 5 ngày
+
+                daily = byDay
+                    .Select(g =>
+                        g.OrderBy(x => Math.Abs((x.dtLocal - x.dtLocal.Date.AddHours(12)).TotalHours))
+                         .First().item)
+                    .Select(x => new DailyPick(
+                        DateTimeOffset.FromUnixTimeSeconds(x.dt).LocalDateTime,
+                        x.main?.temp ?? 0,
+                        x.weather?.FirstOrDefault()?.description ?? "",
+                        x.weather?.FirstOrDefault()?.icon ?? "01d"
+                    ))
+                    .Skip(1) // bỏ hôm nay, giữ các ngày tới
+                    .Take(5)
+                    .ToList();
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            error = ex.Message + " (có thể sai API key hoặc vượt hạn mức)";
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    // --- DTOs (chỉ lấy các trường cần thiết) ---
+    public class CurrentWeatherResponse
+    {
+        public string name { get; set; } = "";
+        public long dt { get; set; }
+        public CurrentMain main { get; set; } = new();
+        public List<WeatherItem> weather { get; set; } = new();
+        public Wind? wind { get; set; }
+        public Sys? sys { get; set; }
+    }
+    public class CurrentMain { public double temp { get; set; } public double humidity { get; set; } }
+    public class WeatherItem { public string description { get; set; } = ""; public string icon { get; set; } = "01d"; }
+    public class Wind { public double speed { get; set; } }
+    public class Sys { public string country { get; set; } = ""; }
+
+    public class ForecastResponse { public List<ForecastItem> list { get; set; } = new(); }
+    public class ForecastItem
+    {
+        public long dt { get; set; }
+        public CurrentMain? main { get; set; }
+        public List<WeatherItem>? weather { get; set; }
+    }
+
+    public record DailyPick(DateTime dt, double temp, string desc, string icon);
+
+    // --- helpers ---
+    string IconUrl(string icon) => $"https://openweathermap.org/img/wn/{icon}@2x.png";
+    string Cap(string s) => string.IsNullOrWhiteSpace(s) ? "" : char.ToUpper(s[0]) + s[1..];
+    string CurrentIcon => current?.weather?.FirstOrDefault()?.icon ?? "01d";
+}

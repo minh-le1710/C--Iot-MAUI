@@ -426,7 +426,7 @@
           "build/Microsoft.NET.ILLink.Tasks.props": {}
         }
       },
-      "Microsoft.NET.Sdk.WebAssembly.Pack/9.0.10": {
+      "Microsoft.NET.Sdk.WebAssembly.Pack/9.0.11": {
         "type": "package",
         "build": {
           "build/Microsoft.NET.Sdk.WebAssembly.Pack.props": {},
@@ -859,7 +859,7 @@
           "build/Microsoft.NET.ILLink.Tasks.props": {}
         }
       },
-      "Microsoft.NET.Sdk.WebAssembly.Pack/9.0.10": {
+      "Microsoft.NET.Sdk.WebAssembly.Pack/9.0.11": {
         "type": "package",
         "build": {
           "build/Microsoft.NET.Sdk.WebAssembly.Pack.props": {},
@@ -1705,10 +1705,10 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "Microsoft.NET.Sdk.WebAssembly.Pack/9.0.10": {
-      "sha512": "Ye7Zr/1d5cMeXyqv2uaEYrZjgRAcZKTXE/dJByxhicD7jLQSQcwmuBZzIXi+SY5sZbvKeH7nSTcVa7fOrJArfw==",
+    "Microsoft.NET.Sdk.WebAssembly.Pack/9.0.11": {
+      "sha512": "ny1kL8vhtikzuGQGNf2R1ElHPOHv+TekNMT0Emp78mYGUWQDzpjQ4CL57n5qly4SANGPPM33K7BvszowaMzMpw==",
       "type": "package",
-      "path": "microsoft.net.sdk.webassembly.pack/9.0.10",
+      "path": "microsoft.net.sdk.webassembly.pack/9.0.11",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
@@ -1739,7 +1739,7 @@
         "build/Microsoft.NET.Sdk.WebAssembly.Pack.targets",
         "build/Wasm.web.config",
         "build/browser.runtimeconfig.template.json",
-        "microsoft.net.sdk.webassembly.pack.9.0.10.nupkg.sha512",
+        "microsoft.net.sdk.webassembly.pack.9.0.11.nupkg.sha512",
         "microsoft.net.sdk.webassembly.pack.nuspec",
         "tools/net472/Microsoft.NET.Sdk.WebAssembly.Pack.Tasks.dll",
         "tools/net472/Microsoft.NET.WebAssembly.Webcil.dll",
@@ -1753,7 +1753,7 @@
       "Microsoft.AspNetCore.Components.WebAssembly >= 9.0.10",
       "Microsoft.AspNetCore.Components.WebAssembly.DevServer >= 9.0.10",
       "Microsoft.NET.ILLink.Tasks >= 9.0.10",
-      "Microsoft.NET.Sdk.WebAssembly.Pack >= 9.0.10"
+      "Microsoft.NET.Sdk.WebAssembly.Pack >= 9.0.11"
     ]
   },
   "packageFolders": {
@@ -1818,7 +1818,7 @@
           "Microsoft.NET.Sdk.WebAssembly.Pack": {
             "suppressParent": "All",
             "target": "Package",
-            "version": "[9.0.10, )",
+            "version": "[9.0.11, )",
             "autoReferenced": true
           }
         },
@@ -1835,8 +1835,12 @@
         "warn": true,
         "downloadDependencies": [
           {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.11, 9.0.11]"
+          },
+          {
             "name": "Microsoft.NETCore.App.Runtime.Mono.browser-wasm",
-            "version": "[9.0.10, 9.0.10]"
+            "version": "[9.0.11, 9.0.11]"
           }
         ],
         "frameworkReferences": {
